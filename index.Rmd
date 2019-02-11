@@ -1,0 +1,107 @@
+---
+title: "Practical Machine Learning Course Project"
+subtitle: "Human Activity Recognition - Machine Learning Classifier"
+author: "Oliver Zarate"
+date: "February 7, 2019"
+output: html_document
+---
+
+
+## Human Activity - Dataset Description & Objective
+
+This assignment required us to evaluate data taken on 6 subjects while lifting weights. Each subject was asked to perform weight lifting excercises in 5 different manners - One manner correctly, and five distinctly incorrect manners. The data was collected via on-body sensors as well as ambient sensing mechanisms. The data set contains nearly 160 variables mostly comprising measurments taken at each timestamp moment. For more details study see following <http://web.archive.org/web/20161224072740/http:/groupware.les.inf.puc-rio.br/har>.
+
+The objective is to utilize the training data within nearly 19622 observations to correctly classify the "classe" or (as mentioned above) the manner in which the excercise was carried out. 
+
+We begin by calling the appropriate libraries, ingesting the datasets, and creating a training test set:
+
+```{r }
+#libraries
+suppressMessages(library(tidyverse));suppressMessages(library(ggplot2));suppressMessages(library(caret))
+#data ingestion
+setwd("C:/Users/k126563/Documents/Data Science/Johns Hopkins/Course Project")
+har.data=read.csv("pml-training.csv")
+test.cases = read.csv("pml-testing.csv")
+# data split
+set.seed(78278)
+inTrain = createDataPartition(y=har.data$classe,p=.7, list=FALSE)
+training = har.data[inTrain,]; testing = har.data[-inTrain,]
+```
+
+## Feature Creation
+Since I did not have  domain knowledge of the prediction or variables, I stared with a simple review of the variables. Many of the fields had either missing values or NA's. I attempted to systematically identify features that had no predicitive value and collect their names in a vector called "remove.features". I started with identifying near zero variance fields:   
+
+```{r}
+# removing near zero variance fields
+nsv = nearZeroVar(training,saveMetrics = TRUE)
+table(nsv$nzv)
+```
+
+Over 1/3 of all features are near zero variance. We run the following command to essentially create a list of features we will remove.
+
+```{r}
+remove.features = rownames(nsv[grep("TRUE",nsv$nzv),])
+```
+
+I will keep this vector to potentially add other names to the "remove list". 
+
+Next I looked to identify fields that had a high percentage of NA.
+The following code counts the NA's per field and takes and calculates as a percentage of number of rows.
+
+```{r}
+missing.values = training %>% summarise_all(funs(sum(is.na(.))/n() ))
+missing.values = gather(missing.values,key="feature",value = "missing.pct")
+hist(missing.values$missing.pct,main="Histogram of number of NA by feature",xlab ="Percent of NAs")
+```
+
+The histograms shows a clear bifurcation - columns either have no NAs or over 97 percent NAs. Ifilter out names of columns with NA percentages over 90, and add this to my "remove list":
+
+```{r}
+remove.features=c(remove.features,filter(missing.values,missing.pct>.9) %>% pull(feature))
+```
+
+I take one final look at the column names to see if any other variables are still present that don't appear to have predictive value. After reviewing, it seems that row number (X), time stamps, and usernames would not have any predictive values, so I also remove the first 5 columns. Add these features to the remove list
+
+```{r}
+remove.features = c(remove.features,names(training)[1:5])
+```
+
+The following code removes duplicates, creates a complement field list to define fields that we will keep, and finally trims down both the training and testing dataframes.
+
+```{r}
+remove.features= unique(remove.features)
+keep = names(training)[(names(training) %in% remove.features)==FALSE]
+training = training[,keep]
+testing=testing[,keep]
+```
+
+## Model Building
+For this classification problem, I decided to try two models and use the test set to cross validate. The two models I decided to try were also the most powerful - random forest and gbm (gradient boosted model)
+
+```{r}
+mod.gbm = train(classe~.,method="gbm",data = training,verbose = F)
+mod.rf  = train(classe~.,method="rf",data = training)
+# predict 
+pred.rf  = predict(mod.rf,newdata = testing)
+pred.gbm = predict(mod.gbm,newdata = testing)
+```
+
+Below we check the accuracy of each model
+
+```{r}
+print("GBM Accuracy:");confusionMatrix(pred.gbm,testing$classe)$overall[1]
+print("Random Forest Accuracy:");confusionMatrix(pred.rf,testing$classe)$overall[1]
+```
+
+It appears that both models are higly accurate, but random forest produces a slightly more accurate prediction. We will use this model to predict the 20 test cases. However before doing so, we would like to get a list of the top 10 most important variables used in prediction:
+
+```{r}
+plot(varImp(mod.rf),top = 10)
+```
+
+Finally, we we can use our selected, random forest model, to make a prediction on the 20 test cases:
+
+## Conclusion
+Again, the fact that this was a data science challenge in an area I had very little domain knowldge about, required I rely heavily on data exploration and careful feature selection. When looking at the results, it apears that the belt related features were important - 3 features show up in the top 10 list. It so happens that that roll, pitch, and yaw describe the 3 dimensional movement of the core or torso. Another intersting observation, that makes sense is that the magnet dumbell overservations for 2 dimensions - z and y are identified as important features. 
+
+
