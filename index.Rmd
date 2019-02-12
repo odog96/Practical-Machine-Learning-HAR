@@ -102,6 +102,11 @@ plot(varImp(mod.rf),top = 10)
 Finally, we we can use our selected, random forest model, to make a prediction on the 20 test cases:
 
 ## Conclusion
-Again, the fact that this was a data science challenge in an area I had very little domain knowldge about, required I rely heavily on data exploration and careful feature selection. When looking at the results, it apears that the belt related features were important - 3 features show up in the top 10 list. It so happens that that roll, pitch, and yaw describe the 3 dimensional movement of the core or torso. Another intersting observation, that makes sense is that the magnet dumbell overservations for 2 dimensions - z and y are identified as important features. 
+
+Since the cross validation error was over 99% I expect the out of sample error to be low. Perhaps not as low, but still quite high. 
+
+After submitting the quiz, this model produced 100 % accuracy out of sample. I expect that with sufficient out of sample cases, to observe some error perhaps even lower than 99%. 
+
+Interpretation of results - the fact that this was a data science challenge in an area I had very little domain knowldge about, required I rely heavily on data exploration and careful feature selection. When looking at the results, it apears that the belt related features were important - 3 features show up in the top 10 list. It so happens that that roll, pitch, and yaw describe the 3 dimensional movement of the core or torso. Another intersting observation, that makes sense is that the magnet dumbell overservations for 2 dimensions - z and y are identified as important features. 
 
 
